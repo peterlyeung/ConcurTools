@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Concur List Item Id Retriever</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+  </head>
+  <body class="container" style="padding-top:50px;">
+      <div ng-app="app1" >
+
+		<div class="row">
+        <div class="col-sm-6 col-md-4 col-md-offset-4">
+            <h1 class="text-center login-title">Concur List Item Id Retriever</h1>
+            <div class="account-wall">
+                <form class="form-signin" ng-controller="ItemCtrl">
+                            <div class="form-group"> {{ errMsg }}
+                            </div>
+        					<div class="form-group">
+        						<label for="inputUserName">User Name</label>
+        						<input type="text" class="form-control" name="username" ng-model='username' placeholder="User Name" required autofocus>
+        					</div>
+        					<div class="form-group">
+        						<label for="inputPassword">Password</label>
+        						<input type="password" class="form-control" name="password" ng-model='password' placeholder="Password" required>
+        					</div>
+                  <div class="form-group">
+
+                    <label for="inputConsumerKey">Consumer Key</label><br/>
+                    The Consumer Key can be found within the Concur org.  Go to Manage Partner Apps and then modify.
+                    <input type="text" class="form-control" name="consumerkey" ng-model='consumerkey' placeholder="Consumer Key" required>
+                  </div>
+        					<div class="form-group">
+        					<a ng-click="genOAuthClick()" id="prodBtn" role="button" style="margin-right:40px" class="btn btn-primary btn-lg">Generate OAuth Token</a>
+        					</div>
+                            <!--button ng-disabled='form.$invalid' class="btn btn-lg btn-primary btn-block" type="submit">Login</button-->
+        					<!--label class="checkbox pull-left">
+        						<input type="checkbox" value="remember-me">
+        						Remember me
+        					</label-->
+                  <div class="form-group">
+
+                    If no OAuth token is listed below, please enter your username, password, and consumer key.  Then click on "Generate OAuth Token".
+                    If on the next page, there are no lists shown, this means the place where you got the generated token from did not include the List scope.
+                    Please generate a new token using the form above.<p/><p/>
+                    <label for="inputUserName">OAuth Token</label>
+                    <input type="text" class="form-control" name="oauthtoken" ng-model='oauthtoken' placeholder="" >
+                  </div>
+                  <div class="form-group">
+        					<a ng-click="gotoListItem()" id="prodBtn" role="button" style="margin-right:40px" class="btn btn-primary btn-lg">Export List Item Ids</a>
+        					</div>
+
+
+
+                </form>
+
+            </div>
+        </div>
+		</div>
+
+
+
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.4.0/angular.min.js"></script>
+    <script>
+
+     if (window.location.protocol != "https:" && window.location.hostname != 'localhost')
+    	    window.location.href = "https:" + window.location.href.substring(window.location.protocol.length);
+
+        var myApp = angular.module('app1',[ ]);
+
+        //As Cookies are inconsistent, Use LocalSTorage of HTML 5
+        myApp.factory('storageService', function ($rootScope) {
+            return {
+                get: function (key) {
+                   return localStorage.getItem(key);
+                },
+                set: function (key, data) {
+                   localStorage.setItem(key, data);
+                },
+                remove: function (key) {
+                    localStorage.removeItem(key);
+                },
+                clearAll : function () {
+                    localStorage.clear();
+                }
+            };
+        });
+
+        // inject http object into controller since this page will directly make a call to the server for the authentication
+         myApp.controller('ItemCtrl', ['$scope' ,'storageService', '$http', function($scope,  storageService, $http) {
+
+                // PY - set default values.  Retrieve domain from storage if it exists
+                $scope.errMsg = '';
+                $scope.username = '';
+                $scope.password = '';
+                $scope.consumerkey = storageService.get('consumerkey');
+                $scope.oauthtoken = storageService.get('oauthtoken');
+
+                $scope.gotoListItem = function() {
+                    // save OAuth Token
+                    storageService.set('oauthtoken',$scope.oauthtoken);
+
+                    var postdata = {
+                        oauthtoken:$scope.oauthtoken
+                    };
+
+                    window.location.href = '/beta/ListItemExport.html'; //?oauthtoken=' + $scope.oauthtoken;
+
+                }
+
+                // handle login click
+                $scope.genOAuthClick = function() {
+                    console.log('Storing SQBInstURL: ', storageService.get('SQBInstURL'));
+                    storageService.set('consumerkey',$scope.consumerkey);
+
+                    var postdata = {
+                        username:$scope.username,
+                        password:$scope.password,
+                        consumerkey:$scope.consumerkey
+                    };
+
+                    // perform POST
+                    $http(
+                        { url: '/beta/genauthtoken',
+                          method: "POST",
+                          data: postdata
+                        }).
+                      success(function(data, status, headers, config) {
+                        // this callback will be called asynchronously
+                        // when the response is available
+
+                        $scope.oauthtoken = data.oauthtoken;
+                        storageService.set('oauthtoken',$scope.oauthtoken);
+                        storageService.set('username',$scope.username);
+
+                        // store it
+                      }).
+                      error(function(data, status, headers, config) {
+                        // called asynchronously if an error occurs
+                        // or server returns response with an error status.
+                            console.log(JSON.stringify(status) + ' ' + JSON.stringify(data));
+                            //console.log(data.errMsg);
+                            $scope.errMsg = JSON.stringify(status) + ' ' + JSON.stringify(data);
+                      });
+
+                }
+
+         }]);
+
+
+
+      </script>
+  </body>
+</html>
